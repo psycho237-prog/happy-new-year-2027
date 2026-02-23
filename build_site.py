@@ -26,32 +26,29 @@ def build():
         with open(STATE_FILE, "r") as f:
             state = json.load(f)
     else:
-        state = {"current_line": 0}
+        state = {"current_line_float": 0.0}
 
-    current_line = state["current_line"]
     total_lines = len(full_code)
     days_left = get_days_remaining()
     
-    # Calculate how many lines to add today
-    lines_remaining = total_lines - current_line
-    lines_per_day = max(1, lines_remaining // days_left)
+    # Calculate fractional lines per day to finish exactly on time
+    lines_remaining = total_lines - state["current_line_float"]
+    increment = lines_remaining / days_left
     
-    # If it's the last day, take everything
-    if days_left <= 1:
-        lines_per_day = lines_remaining
-
-    new_end_line = min(total_lines, current_line + lines_per_day)
+    new_line_float = state["current_line_float"] + increment
+    new_line_int = int(new_line_float)
     
-    # Write the current progress
+    # Write the code up to the integer index
     with open(TARGET_FILE, "w") as f:
-        f.writelines(full_code[:new_end_line])
+        f.writelines(full_code[:new_line_int])
+        f.write(f"\n<!-- Daily Build Progress: {datetime.now().strftime('%Y-%m-%d')} -->\n")
 
     # Update state
-    state["current_line"] = new_end_line
+    state["current_line_float"] = new_line_float
     with open(STATE_FILE, "w") as f:
         json.dump(state, f)
 
-    print(f"Added {new_end_line - current_line} lines. Total progress: {new_end_line}/{total_lines}")
+    print(f"Progress: {new_line_int}/{total_lines} lines. {days_left} days remaining.")
 
 if __name__ == "__main__":
     build()
