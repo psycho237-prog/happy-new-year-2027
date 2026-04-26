@@ -26,7 +26,11 @@ def build():
         with open(STATE_FILE, "r") as f:
             state = json.load(f)
     else:
-        state = {"current_line_float": 0.0}
+        state = {}
+
+    # Ensure the required key exists
+    if "current_line_float" not in state:
+        state["current_line_float"] = 0.0
 
     total_lines = len(full_code)
     days_left = get_days_remaining()
