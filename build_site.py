@@ -1,32 +1,52 @@
-name: Daily Build - Happy New Year 2027
+import json
+from pathlib import Path
+from html import escape
 
-on:
-  schedule:
-    - cron: '0 0 * * *' # Every day at midnight
-  workflow_dispatch: # Allow manual trigger
+STATE_FILE = Path("state.json")
+HTML_FILE = Path("index.html")
 
-permissions:
-  contents: write
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+def read_count():
+    if not STATE_FILE.exists():
+        return 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+    try:
+        state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        return int(state.get("count", 0))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return 0
 
-      - name: Run Build Script
-        run: python build_site.py
 
-      - name: Commit Changes
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html state.json
-          git commit -m "Daily Build: Incremental code addition ($(date +'%Y-%m-%d'))" || exit 0
-          git push origin main
+count = read_count() + 1
+STATE_FILE.write_text(
+    json.dumps({"count": count}, indent=2) + "\n",
+    encoding="utf-8",
+)
+
+new_div = f'    <div class="build-item" hidden>Build {count}</div>\n'
+
+if HTML_FILE.exists():
+    html = HTML_FILE.read_text(encoding="utf-8")
+else:
+    html = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Happy New Year 2027</title>
+</head>
+<body>
+  <main>
+    <h1>Happy New Year 2027</h1>
+  </main>
+</body>
+</html>
+"""
+
+if "</body>" in html:
+    html = html.replace("</body>", f"{new_div}</body>", 1)
+else:
+    html += f"\n{new_div}"
+
+HTML_FILE.write_text(html, encoding="utf-8")
+print(f"Build complete. Total build items: {count}")
